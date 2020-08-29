@@ -1,4 +1,14 @@
 --------------------------------------------------------------------------
+-- Q0. Show the employees names, city, state and country for Sales Reps 
+working outside of the USA.
+--------------------------------------------------------------------------
+SELECT e.firstname, e.lastname, o.city, o.state, o.country
+FROM employees e INNER JOIN offices o 
+ON e.officecode = o.officecode 
+WHERE e.jobtitle = 'Sales Rep' 
+AND o.country <> 'USA'; 
+
+--------------------------------------------------------------------------
 -- Q1.
 --------------------------------------------------------------------------
 SELECT customername, addressline1, addressline2, city, state, postalcode
