@@ -1,0 +1,106 @@
+******* Download csv file again (in [hadoop@ip-172-31-4-0 ~]$ )
+curl -O  http://optionsdata.baruch.cuny.edu/data1/delivery/data/trades_sample.csv
+
+
+
+******* Load/Copy data
+1. aws s3 cp "s3://nyc-tlc/trip+data/yellow_tripdata_2018-02.csv" s3://yellow-taxi-bucket/data/
+
+aws s3 cp "s3://nyc-tlc/trip+data/yellow_tripdata_2018-03.csv" s3://yellow-taxi-bucket/data/
+s3://nyc-tlc/trip+data/yellow_tripdata_2018-02.csv" s3://yellow-taxi-bucket/data/
+s3://nyc-tlc/trip+data/yellow_tripdata_2018-02.csv
+https://s3.amazonaws.com/nyc-tlc/trip+data/yellow_tripdata_2018-03.csv
+
+2. aws s3 cp trades_sample.csv  s3://market-data-bucket/data/
+
+
+
+******* Both Download & Load/Copy data
+curl -L  http://optionsdata.baruch.cuny.edu/data1/delivery/data/trades_sample.csv | aws s3 cp -  s3://market-data-bucket/data/
+
+
+
+***** SSH Connection
+ssh -i  MDang_KP1.pem hadoop@ec2-34-235-167-44.compute-1.amazonaws.com
+
+
+**** check directory (in [hadoop@ip-172-31-25-230 ~]$ )
+1. aws s3 ls s3://market-trade-bucket/data/
+
+
+**** Config file log4j.properties (in [hadoop@ip-172-31-25-230 ~]$ )
+nano log4j.properties
+
+# Set everything to be logged to the console
+log4j.rootCategory=WARN, console
+log4j.appender.console=org.apache.log4j.ConsoleAppender
+log4j.appender.console.target=System.err
+log4j.appender.console.layout=org.apache.log4j.PatternLayout
+log4j.appender.console.layout.ConversionPattern=%d{yy/MM/dd HH:mm:ss} %p %c{1}: %m%n
+
+# Settings to quiet third party logs that are too verbose
+log4j.logger.org.eclipse.jetty=WARN
+log4j.logger.org.eclipse.jetty.util.component.AbstractLifeCycle=ERROR
+log4j.logger.org.apache.spark.repl.SparkIMain$exprTyper=WARN
+log4j.logger.org.apache.spark.repl.SparkILoop$SparkILoopInterpreter=WARN
+
+---Then save modified buffer
+
+
+
+****** Launch Spark-SQL
+spark-sql --driver-java-options "-Dlog4j.configuration=file:///home/hadoop/log4j.properties"
+
+
+**** Create a Table in Spark-SQL
+CREATE EXTERNAL TABLE trades_sample
+        (trading_date_time TIMESTAMP,
+         network CHAR(1),
+         message_category CHAR(1),
+         message_type CHAR(1),
+         message_sequence BIGINT,
+         market_exchange CHAR(1),
+         symbol VARCHAR(10),
+         trade_price DOUBLE,
+         trade_size BIGINT,
+         trade_conditions VARCHAR(6),
+         trade_conditions2 VARCHAR(6) )
+     ROW FORMAT DELIMITED FIELDS TERMINATED BY ','
+     LOCATION 's3://market-trade-bucket/data/';
+--- Location can point to a specific file, without the slash in the end
+[0.462 sec for tutorials]
+
+
+
+
+******* Table Structure Examination
+DESCRIBE trades_sample;
+
+
+
+******* Count the # of records
+SELECT COUNT(*) FROM trades_sample;
+[19.587 sec for tutorial]
+
+
+
+******* Queries example:
+SELECT symbol, trade_price, trade_size
+FROM   trades_sample
+WHERE  HOUR(trading_date_time) = 9
+  AND  MINUTE(trading_date_time) = 30;
+[2.778 secs, 1641 rows]
+
+SELECT symbol, SUM(trade_size) AS total_volume
+FROM   trades_sample
+WHERE  HOUR(trading_date_time) < 12
+GROUP BY symbol
+ORDER BY symbol;
+[6.229 secs, 8 rows]
+
+******* Exit from Spark-SQL
+exit
+
+
+
+
